@@ -1,12 +1,8 @@
 ﻿using UnityEngine;
 
-// Đặt thứ tự thực thi của script này là -100
-// Đảm bảo nó chạy TRƯỚC HẦU HẾT các script khác
 [DefaultExecutionOrder(-100)]
 public class GameManager : MonoBehaviour
 {
-    // Đây là "Singleton Pattern" - một cách để mọi script khác
-    // có thể truy cập GameManager một cách dễ dàng thông qua "GameManager.Instance"
     public static GameManager Instance { get; private set; }
 
     [SerializeField] private Ghost[] ghosts;
@@ -16,32 +12,27 @@ public class GameManager : MonoBehaviour
     public int score { get; private set; }
     public int lives { get; private set; }
 
-    // Hàm Awake chạy trước cả hàm Start
+    private int ghostMultiplier = 1;
     private void Awake()
     {
-        // Thiết lập Singleton
         if (Instance != null)
         {
-            // Nếu đã có một GameManager khác -> phá hủy cái mới này
             DestroyImmediate(gameObject);
         }
         else
         {
-            // Nếu chưa có -> gán "Instance" là chính nó (this)
             Instance = this;
         }
     }
 
     private void OnDestroy()
     {
-        // Khi scene bị hủy, gán Instance về null
         if (Instance == this)
         {
             Instance = null;
         }
     }
 
-    // Start chạy khi game bắt đầu
     private void Start()
     {
         NewGame();
@@ -50,45 +41,40 @@ public class GameManager : MonoBehaviour
     private void NewGame()
     {
         SetScore(0);
-        SetLives(3); // Giả sử bắt đầu với 3 mạng
+        SetLives(3);
         NewRound();
+        AudioManager.Instance.PlayIntro();
     }
 
     private void NewRound()
     {
-        // Kích hoạt lại tất cả các hạt pellet
         foreach (Transform pellet in pellets)
         {
             pellet.gameObject.SetActive(true);
         }
 
         ResetState();
+        AudioManager.Instance.PlayIntro();
     }
 
-    // Hàm reset vị trí Pacman và Ghost
     private void ResetState()
     {
-        // Reset tất cả Ghost
         for (int i = 0; i < ghosts.Length; i++)
         {
             ghosts[i].ResetState();
         }
-
-        // Reset Pacman
         pacman.ResetState();
     }
 
     private void GameOver()
     {
-        Debug.Log("GAME OVER!"); // Tạm thời
+        Debug.Log("GAME OVER!"); 
 
-        // Tắt tất cả Ghost
         for (int i = 0; i < ghosts.Length; i++)
         {
             ghosts[i].gameObject.SetActive(false);
         }
 
-        // Tắt Pacman
         pacman.gameObject.SetActive(false);
     }
 
@@ -106,13 +92,13 @@ public class GameManager : MonoBehaviour
         // (Code cập nhật UI Text sẽ ở đây)
     }
 
-    // Đây là hàm mà Pellet sẽ gọi
     public void PelletEaten(Pellet pellet)
     {
         pellet.gameObject.SetActive(false);
         SetScore(score + pellet.points);
 
-        // KIỂM TRA THẮNG:
+        AudioManager.Instance.PlayMunch();
+
         if (!HasRemainingPellets())
         {
             pacman.gameObject.SetActive(false); // Tắt Pacman đi
@@ -136,33 +122,29 @@ public class GameManager : MonoBehaviour
 
     public void PowerPelletEaten(PowerPellet pellet)
     {
-        // ----- Code cho Power Pellet -----
-        // (Sau này chúng ta sẽ thêm code làm Ghost sợ hãi ở đây)
-        Debug.Log("ĂN HẠT SỨC MẠNH!");
-        // ---------------------------------
+        for (int i = 0; i < ghosts.Length; i++)
+        {
+            ghosts[i].frightened.Enable(pellet.duration);
+        }
 
-        // Gọi hàm PelletEaten cơ bản để cộng điểm và làm biến mất hạt
         PelletEaten(pellet);
-
-        // (Sau này chúng ta sẽ thêm code reset bộ đếm ăn ma ở đây)
+        ghostMultiplier = 1;
     }
 
-    // THÊM HÀM NÀY ĐỂ SỬA LỖI CS1061:
     public void GhostEaten(Ghost ghost)
     {
-        // (Sau này sẽ thêm logic nhân điểm)
-        int points = ghost.points;
+        int points = ghost.points * ghostMultiplier;
         SetScore(score + points);
-
-        Debug.Log("Ăn ma, được " + points + " điểm!");
+        ghostMultiplier++;
+        AudioManager.Instance.PlayEatGhost();
+        Debug.Log("Ăn ma! Điểm: " + points + " (Hệ số: x" + (ghostMultiplier - 1) + ")");
     }
 
-    // THÊM HÀM NÀY ĐỂ SỬA LỖI CÒN LẠI:
     public void PacmanEaten()
     {
         // Tắt Pacman đi
         pacman.gameObject.SetActive(false); // (Sau này sẽ thay bằng animation chết)
-
+        AudioManager.Instance.PlayDeath();
         SetLives(lives - 1);
 
         if (lives > 0)

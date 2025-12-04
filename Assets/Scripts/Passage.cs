@@ -1,18 +1,17 @@
-using UnityEngine;
+﻿using UnityEngine;
 
+[RequireComponent(typeof(Collider2D))]
 public class Passage : MonoBehaviour
 {
 
-public Transform connection;
+    public Transform connection;
 
-private void OnTriggerEnter2D(Collider2D other)
+    private void OnTriggerEnter2D(Collider2D other)
     {
-            Vector3 position = other. transform. position;
-            position. x =this. connection . position. x;
-            position. y = this. connection.position.y;
-            other. transform. position = position;
-           
-     }
-     
-    }
+        Vector3 position = other.transform.position;
+        position.x = connection.position.x;
+        position.y = connection.position.y;
 
+        other.transform.position = position;
+    }
+}
