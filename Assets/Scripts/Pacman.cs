@@ -32,6 +32,16 @@ public class Pacman : MonoBehaviour
         {
             movement.SetDirection(Vector2.right);
         }
+        if (movement.nextDirection != Vector2.zero)
+    {
+        // Kiểm tra vị trí của Pac-Man. Nếu nó ở gần node:
+        // *Bạn cần một hàm kiểm tra xem Pacman đã đến trung tâm Node chưa*
+        // Ví dụ: if (IsAtNodeCenter()) 
+        {
+            // Thử áp dụng hướng xếp hàng (nó sẽ lại gọi SetDirection)
+            movement.SetDirection(movement.nextDirection);
+        }
+    }
 
         // 2. Xử lý xoay Sprite
         // Lấy hướng di chuyển hiện tại từ script Movement
