@@ -35,4 +35,13 @@ public class GhostScatter : GhostBehavior
             ghost.movement.SetDirection(node.availableDirections[index]);
         }
     }
+    private void OnEnable()
+    {
+        Collider2D nodeCollider = Physics2D.OverlapCircle(transform.position, 0.2f, LayerMask.GetMask("Node"));
+
+        if (nodeCollider != null)
+        {
+            OnTriggerEnter2D(nodeCollider);
+        }
+    }
 }
