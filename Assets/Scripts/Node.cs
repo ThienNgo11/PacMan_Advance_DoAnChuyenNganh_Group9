@@ -3,34 +3,62 @@ using UnityEngine;
 
 public class Node : MonoBehaviour
 {
-    // Layer của tường (chúng ta sẽ gán nó trong Prefab)
     public LayerMask obstacleLayer;
-
-    // Danh sách các hướng đi có thể từ Node này (không vướng tường)
-    public readonly List<Vector2> availableDirections = new List<Vector2>();
+    public List<Vector2> availableDirections { get; private set; }
 
     private void Start()
     {
-        availableDirections.Clear();
-
-        // Chúng ta kiểm tra 4 hướng
-        // Dùng CircleCast (giống như "mắt tròn" của Pacman) để xem có vướng tường không
+        availableDirections = new List<Vector2>();
+        
+        // THÊM DEBUG ĐỂ KIỂM TRA
+        Debug.Log($"Node {name} at {transform.position} starting direction check");
+        
         CheckAvailableDirection(Vector2.up);
         CheckAvailableDirection(Vector2.down);
         CheckAvailableDirection(Vector2.left);
         CheckAvailableDirection(Vector2.right);
+        
+        // DEBUG: In kết quả
+        Debug.Log($"Node {name} at {transform.position} has {availableDirections.Count} directions");
+        foreach (Vector2 dir in availableDirections)
+        {
+            Debug.Log($"  -> {dir}");
+        }
     }
 
     private void CheckAvailableDirection(Vector2 direction)
     {
-        // Bắn một CircleCast với bán kính 0.25f, đi một đoạn ngắn 1f
-        // và chỉ kiểm tra va chạm với Layer "Obstacle"
-        RaycastHit2D hit = Physics2D.CircleCast(transform.position, 0.25f, direction, 1f, obstacleLayer);
-
-        // Nếu hit.collider là null (không bắn trúng gì), nghĩa là đường đó trống
-        if (hit.collider == null)
+        // SỬA: Dùng Linecast thay vì CircleCast cho chính xác
+        Vector2 start = transform.position;
+        Vector2 end = start + direction; // Chỉ cần 1 unit vì maze grid là 1x1
+        
+        RaycastHit2D hit = Physics2D.Linecast(start, end, obstacleLayer);
+        
+        // DEBUG CHI TIẾT
+        if (hit.collider != null)
+        {
+            Debug.Log($"  Node {name}: {direction} BLOCKED by {hit.collider.name}");
+        }
+        else
         {
             availableDirections.Add(direction);
+            Debug.Log($"  Node {name}: {direction} is FREE");
+        }
+    }
+
+    // THÊM: Visual debug trong Scene view
+    private void OnDrawGizmosSelected()
+    {
+        Gizmos.color = Color.green;
+        Gizmos.DrawSphere(transform.position, 0.1f);
+        
+        if (availableDirections != null)
+        {
+            Gizmos.color = Color.yellow;
+            foreach (Vector2 direction in availableDirections)
+            {
+                Gizmos.DrawRay(transform.position, direction * 0.5f);
+            }
         }
     }
 }

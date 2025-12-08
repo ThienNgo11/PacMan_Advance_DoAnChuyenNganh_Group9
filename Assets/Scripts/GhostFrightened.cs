@@ -9,11 +9,54 @@ public class GhostFrightened : GhostBehavior
     public SpriteRenderer white;
 
     private bool eaten; // Đánh dấu xem đã bị ăn chưa
+    private float frightenedDuration;
+
+    
+    // THÊM: Cache reference đến AnimatedSprite
+    private AnimatedSprite blueAnim;
+    private AnimatedSprite whiteAnim;
+    
+
+    protected void Awake()
+    {
+        if (ghost == null)
+        ghost = GetComponent<Ghost>();
+        
+        // Lấy AnimatedSprite components
+        if (blue != null)
+            blueAnim = blue.GetComponent<AnimatedSprite>();
+        if (white != null)
+            whiteAnim = white.GetComponent<AnimatedSprite>();
+            
+        // Debug để kiểm tra
+        Debug.Log($"{gameObject.name} - GhostFrightened Awake:");
+        Debug.Log($"Body: {body != null}, Eyes: {eyes != null}, Blue: {blue != null}, White: {white != null}");
+        Debug.Log($"Ghost: {ghost != null}");
+    }
 
     // Ghi đè hàm Enable (vì nó cần làm nhiều thứ hơn là chỉ bật)
     public override void Enable(float duration)
     {
         base.Enable(duration); // Gọi hàm Enable của lớp cha (để chạy Invoke)
+
+        // KIỂM TRA NULL TRƯỚC KHI DÙNG
+        if (ghost == null)
+        {
+            Debug.LogError($"{gameObject.name}: Ghost is null!");
+            return;
+        }
+        
+        if (ghost.movement == null)
+        {
+            Debug.LogError($"{gameObject.name}: Movement is null!");
+            return;
+        }
+        
+        if (body == null || eyes == null || blue == null || white == null)
+        {
+            Debug.LogError($"{gameObject.name}: SpriteRenderer references are null!");
+            return;
+        }
 
         // Tắt sprite thân và mắt bình thường
         body.enabled = false;
@@ -21,6 +64,16 @@ public class GhostFrightened : GhostBehavior
         // Bật sprite màu xanh
         blue.enabled = true;
         white.enabled = false;
+
+
+        // Restart animation nếu có
+        if (blueAnim != null)
+            blueAnim.Restart();
+
+        // Giảm tốc độ
+        ghost.movement.speedMultiplier = 0.5f;
+        
+        eaten = false;
 
         // Hẹn giờ để gọi hàm Flash (nhấp nháy) sau một nửa thời gian
         Invoke(nameof(Flash), duration / 2f);
@@ -31,27 +84,55 @@ public class GhostFrightened : GhostBehavior
     {
         base.Disable(); // Gọi hàm Disable của lớp cha
 
+
+        // KIỂM TRA NULL
+        if (body == null || eyes == null || blue == null || white == null)
+            return;
+            
+        if (ghost == null || ghost.movement == null)
+            return;
+
         // Khôi phục lại sprite thân và mắt bình thường
         body.enabled = true;
         eyes.enabled = true;
         blue.enabled = false;
         white.enabled = false;
+
+        // Khôi phục tốc độ
+        ghost.movement.speedMultiplier = 1f;
+        
+        eaten = false;
     }
 
     // Hàm này được gọi khi Ghost bị Pacman ăn
     private void Eaten()
     {
+
+        if (ghost == null)
+        {
+            Debug.LogError("0 co ghost");
+        }
+
         eaten = true;
 
         // Dịch chuyển Ghost về vị trí "trong chuồng"
         // (Chúng ta cần tạo các điểm này trong Scene đã)
         // Tạm thời bạn cứ code, nếu 'ghost.home.inside' báo lỗi thì kệ nó
-        Vector3 position = ghost.home.inside.position;
-        position.z = ghost.transform.position.z;
-        ghost.transform.position = position;
+        // Vector3 position = ghost.home.inside.position;
+        // position.z = ghost.transform.position.z;
+        // ghost.transform.position = position;
 
-        // Kích hoạt trạng thái "về nhà" (sẽ được code sau)
-        ghost.home.Enable(duration); // Tái sử dụng 'duration' để về nhà
+        // // Kích hoạt trạng thái "về nhà" (sẽ được code sau)
+        // ghost.home.Enable(duration); // Tái sử dụng 'duration' để về nhà
+        if (ghost.home != null && ghost.home.inside != null)
+        {
+            Vector3 position = ghost.home.inside.position;
+            position.z = ghost.transform.position.z;
+            ghost.transform.position = position;
+
+            // Kích hoạt trạng thái "về nhà"
+            ghost.home.Enable(frightenedDuration);
+        }
 
         // Chỉ hiển thị mắt
         body.enabled = false;
@@ -75,15 +156,30 @@ public class GhostFrightened : GhostBehavior
     // Khi script này được bật (OnEnable), giảm tốc độ Ghost
     private void OnEnable()
     {
-        blue.GetComponent<AnimatedSprite>().Restart();
-        ghost.movement.speedMultiplier = 0.5f; // Chạy chậm bằng nửa
+        // DÒNG 90 - SỬA LẠI: Kiểm tra null trước
+        if (blueAnim != null)
+            blueAnim.Restart();
+        else if (blue != null)
+        {
+            blueAnim = blue.GetComponent<AnimatedSprite>();
+            if (blueAnim != null)
+                blueAnim.Restart();
+        }
+        
+        if (ghost != null && ghost.movement != null)
+        {
+            ghost.movement.speedMultiplier = 0.5f;
+        }
         eaten = false;
     }
 
     // Khi script này bị tắt (OnDisable), khôi phục tốc độ
     private void OnDisable()
     {
-        ghost.movement.speedMultiplier = 1f; // Tốc độ bình thường
+        if (ghost != null && ghost.movement != null)
+        {
+            ghost.movement.speedMultiplier = 1f;
+        }
         eaten = false;
     }
 

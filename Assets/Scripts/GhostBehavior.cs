@@ -5,7 +5,7 @@
 public abstract class GhostBehavior : MonoBehaviour
 {
     // Tham chiếu đến script Ghost chính
-    public Ghost ghost { get; private set; }
+    public Ghost ghost { get; protected set; }
 
     // Thời lượng mặc định cho hành vi này
     public float duration;
@@ -14,6 +14,10 @@ public abstract class GhostBehavior : MonoBehaviour
     {
         // Lấy script Ghost trên cùng GameObject
         ghost = GetComponent<Ghost>();
+        if (ghost == null)
+        {
+            Debug.LogError("Ghost component not found on " + gameObject.name);
+        }
     }
 
     // Bật hành vi (không có thời lượng, chạy mãi)

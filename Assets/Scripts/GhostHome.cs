@@ -5,16 +5,38 @@ public class GhostHome : GhostBehavior
 {
     public Transform inside;
     public Transform outside;
+    private bool isExiting = false;
+
+
 
     private void OnEnable()
     {
+        Debug.Log($"{gameObject.name}: GhostHome enabled");
+        
+        // Đặt ghost ở vị trí trong nhà
+        if (inside != null)
+        {
+            transform.position = inside.position;
+        }
+        
+        // Dừng ghost lại
+        if (ghost != null && ghost.movement != null)
+        {
+            ghost.movement.SetDirection(Vector2.zero, true);
+            ghost.movement.enabled = false;
+        }
+        
+        isExiting = false;
         StopAllCoroutines();
     }
 
     private void OnDisable()
     {
-        if (gameObject.activeInHierarchy)
+        Debug.Log($"{gameObject.name}: GhostHome disabled, starting exit");
+        
+        if (!isExiting && gameObject.activeInHierarchy)
         {
+            isExiting = true;
             StartCoroutine(ExitTransition());
         }
     }
@@ -69,5 +91,19 @@ public class GhostHome : GhostBehavior
         ghost.movement.rb.isKinematic = false; // Bật lại vật lý
         ghost.movement.enabled = true;
         ghost.chase.Enable();
+    }
+    private IEnumerator MoveToPosition(Vector3 targetPosition, float duration)
+    {
+        Vector3 startPosition = transform.position;
+        float elapsed = 0f;
+        
+        while (elapsed < duration)
+        {
+            transform.position = Vector3.Lerp(startPosition, targetPosition, elapsed / duration);
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+        
+        transform.position = targetPosition;
     }
 }

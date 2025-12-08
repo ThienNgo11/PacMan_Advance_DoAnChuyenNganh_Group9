@@ -23,6 +23,13 @@ public class GameManager : MonoBehaviour
         {
             Instance = this;
         }
+
+        //Thêm debug
+        Debug.Log("GameManager Awake - Checking references:");
+        Debug.Log("Pacman: " + (pacman != null ? "Assigned" : "NULL - PLEASE ASSIGN IN INSPECTOR!"));
+        Debug.Log("Pellets: " + (pellets != null ? "Assigned" : "NULL - PLEASE ASSIGN IN INSPECTOR!"));
+        Debug.Log("Ghosts count: " + (ghosts != null ? ghosts.Length.ToString() : "0"));
+    
     }
 
     private void OnDestroy()
@@ -34,7 +41,18 @@ public class GameManager : MonoBehaviour
     }
 
     private void Start()
-    {
+    {   
+        //Kiểm tra trước khi chơi
+        if (pacman == null)
+        {
+            Debug.LogError("PACMAN IS NULL! Game cannot start. Please assign Pacman in GameManager Inspector.");
+            return; // Dừng lại nếu pacman null
+        }
+        if (pellets == null)
+        {
+            Debug.LogError("PELLETS IS NULL! Game cannot start. Please assign Pellets Transform in GameManager Inspector.");
+            return;
+        }
         NewGame();
     }
 
@@ -64,11 +82,17 @@ public class GameManager : MonoBehaviour
             ghosts[i].ResetState();
         }
         pacman.ResetState();
+
+        if (pacman != null)
+        {
+            pacman.gameObject.SetActive(true); // Thêm dòng này
+            pacman.ResetState();
+        }
     }
 
     private void GameOver()
     {
-        Debug.Log("GAME OVER!"); 
+        Debug.Log("GAME OVER!");
 
         for (int i = 0; i < ghosts.Length; i++)
         {
@@ -124,7 +148,21 @@ public class GameManager : MonoBehaviour
     {
         for (int i = 0; i < ghosts.Length; i++)
         {
-            ghosts[i].frightened.Enable(pellet.duration);
+            if (ghosts[i] != null && ghosts[i].frightened != null)
+        {
+            // THÊM KIỂM TRA TRƯỚC KHI ENABLE
+            GhostFrightened frightened = ghosts[i].frightened;
+            
+            // Kiểm tra nếu SpriteRenderers đã được gán
+            if (frightened.body == null || frightened.eyes == null || 
+                frightened.blue == null || frightened.white == null)
+            {
+                Debug.LogError($"Cannot enable frightened for {ghosts[i].name}: SpriteRenderers not assigned!");
+                continue; // Bỏ qua ghost này
+            }
+            
+            frightened.Enable(pellet.duration);
+        }
         }
 
         PelletEaten(pellet);
@@ -142,20 +180,20 @@ public class GameManager : MonoBehaviour
 
     public void PacmanEaten()
     {
-        // Tắt Pacman đi
-        pacman.gameObject.SetActive(false); // (Sau này sẽ thay bằng animation chết)
+        
+
+        pacman.gameObject.SetActive(false);
         AudioManager.Instance.PlayDeath();
         SetLives(lives - 1);
 
         if (lives > 0)
         {
-            // Nếu còn mạng, gọi ResetState sau 3 giây
             Invoke(nameof(ResetState), 3f);
         }
         else
         {
-            // Nếu hết mạng, gọi Game Over
             GameOver();
         }
     }
+
 }

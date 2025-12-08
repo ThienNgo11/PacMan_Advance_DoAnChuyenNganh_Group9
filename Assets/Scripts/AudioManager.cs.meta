@@ -1,2 +1,20 @@
 fileFormatVersion: 2
 guid: 650a6325848894c4fb48d04286687b85
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - backgroundMusic: {instanceID: 0}
+  - soundEffect: {instanceID: 0}
+  - introMusic: {instanceID: 0}
+  - ghostSiren: {instanceID: 0}
+  - munch1: {instanceID: 0}
+  - munch2: {instanceID: 0}
+  - powerPellet: {instanceID: 0}
+  - eatGhost: {instanceID: 0}
+  - pacmanDeath: {instanceID: 0}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
