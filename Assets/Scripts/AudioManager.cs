@@ -65,8 +65,9 @@ public class AudioManager : MonoBehaviour
 
     public void PlayMunch()
     {
-        AudioClip clip = munch1;
+        AudioClip clip = useMunch1 ? munch1 : munch2;
         soundEffect.PlayOneShot(clip, 0.1f);
+        useMunch1 = !useMunch1;
     }
 
     public void PlayEatGhost()
@@ -86,5 +87,6 @@ public class AudioManager : MonoBehaviour
         {
             soundEffect.PlayOneShot(pacmanDeath);
         }
+        
     }
 }

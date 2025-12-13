@@ -46,7 +46,7 @@ public class Pacman : MonoBehaviour
         // 2. Xử lý xoay Sprite
         // Lấy hướng di chuyển hiện tại từ script Movement
         float angle = Mathf.Atan2(movement.direction.y, movement.direction.x);
-        // Xoay Pacman (transform của nó)
+        // Xoay Pacman (transform của nó)   
         transform.rotation = Quaternion.AngleAxis(angle * Mathf.Rad2Deg, Vector3.forward);
     }
 

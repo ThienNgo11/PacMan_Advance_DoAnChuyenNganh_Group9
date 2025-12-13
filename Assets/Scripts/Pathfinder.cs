@@ -212,7 +212,7 @@ public class Pathfinder : MonoBehaviour
     {
         Node nearest = null;
         float minDistance = float.MaxValue;
-        float searchRadius = 5.0f; // Tăng radius tìm kiếm
+        float searchRadius = 10.0f; // Tăng radius tìm kiếm
 
         foreach (Node node in allNodes)
         {

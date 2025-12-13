@@ -1,64 +1,59 @@
-﻿using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
+using UnityEngine.Tilemaps;
+using System.Collections.Generic;
 
 public class Node : MonoBehaviour
 {
-    public LayerMask obstacleLayer;
+    [Header("References")]
+    public Tilemap wallTilemap;
+
     public List<Vector2> availableDirections { get; private set; }
+    public bool isActive = true;
+
+    private void Awake()
+    {
+        // TỰ ĐỘNG TÌM WALL TILEMAP NẾU CHƯA GÁN
+        if (wallTilemap == null)
+        {
+            GameObject walls = GameObject.Find("Walls");
+            if (walls != null)
+            {
+                wallTilemap = walls.GetComponent<Tilemap>();
+            }
+        }
+
+        if (wallTilemap == null)
+        {
+            Debug.LogError($"Node {name}: wallTilemap NOT FOUND!");
+        }
+    }
 
     private void Start()
     {
+        if (wallTilemap == null) return;
+
         availableDirections = new List<Vector2>();
-        
-        // THÊM DEBUG ĐỂ KIỂM TRA
-        Debug.Log($"Node {name} at {transform.position} starting direction check");
-        
+
         CheckAvailableDirection(Vector2.up);
         CheckAvailableDirection(Vector2.down);
         CheckAvailableDirection(Vector2.left);
         CheckAvailableDirection(Vector2.right);
-        
-        // DEBUG: In kết quả
+
         Debug.Log($"Node {name} at {transform.position} has {availableDirections.Count} directions");
-        foreach (Vector2 dir in availableDirections)
-        {
-            Debug.Log($"  -> {dir}");
-        }
     }
 
     private void CheckAvailableDirection(Vector2 direction)
     {
-        // SỬA: Dùng Linecast thay vì CircleCast cho chính xác
-        Vector2 start = transform.position;
-        Vector2 end = start + direction; // Chỉ cần 1 unit vì maze grid là 1x1
-        
-        RaycastHit2D hit = Physics2D.Linecast(start, end, obstacleLayer);
-        
-        // DEBUG CHI TIẾT
-        if (hit.collider != null)
-        {
-            Debug.Log($"  Node {name}: {direction} BLOCKED by {hit.collider.name}");
-        }
-        else
+        Vector3Int currentCell = wallTilemap.WorldToCell(transform.position);
+        Vector3Int targetCell = currentCell + new Vector3Int(
+            Mathf.RoundToInt(direction.x),
+            Mathf.RoundToInt(direction.y),
+            0
+        );
+
+        if (!wallTilemap.HasTile(targetCell))
         {
             availableDirections.Add(direction);
-            Debug.Log($"  Node {name}: {direction} is FREE");
-        }
-    }
-
-    // THÊM: Visual debug trong Scene view
-    private void OnDrawGizmosSelected()
-    {
-        Gizmos.color = Color.green;
-        Gizmos.DrawSphere(transform.position, 0.1f);
-        
-        if (availableDirections != null)
-        {
-            Gizmos.color = Color.yellow;
-            foreach (Vector2 direction in availableDirections)
-            {
-                Gizmos.DrawRay(transform.position, direction * 0.5f);
-            }
         }
     }
 }
