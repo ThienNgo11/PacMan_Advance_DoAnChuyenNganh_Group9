@@ -6,7 +6,11 @@ public class Pathfinder : MonoBehaviour
     public static Pathfinder Instance { get; private set; }
 
     private List<Node> allNodes;
+    private List<Vector3> debugPath = new List<Vector3>();
     private Dictionary<Vector2Int, Node> nodeGrid;
+
+    [Header("Settings")]
+    public float maxSearchDistance = 10f; // Khoảng cách tối đa để tìm Node tiếp theo
 
     private void Awake()
     {
@@ -20,236 +24,153 @@ public class Pathfinder : MonoBehaviour
             InitializeNodes();
         }
     }
-    
-    private void Start()
-{
-    Debug.Log($"=== PATHFINDER START ===");
-        Debug.Log($"Total nodes found: {allNodes?.Count ?? 0}");
-        Debug.Log($"Grid entries: {nodeGrid?.Count ?? 0}");
-    
-    // Kiểm tra xem có tìm thấy Pac-Man không
-    Ghost[] ghosts = FindObjectsOfType<Ghost>();
-    foreach (Ghost ghost in ghosts)
-    {
-        if (ghost.target != null)
-        {
-            Debug.Log($"{ghost.name} target: {ghost.target.name}");
-        }
-    }
-}
-
-    private void OnDestroy()
-    {
-        if (Instance == this)
-        {
-            Instance = null;
-        }
-    }
 
     private void InitializeNodes()
     {
         allNodes = new List<Node>(FindObjectsOfType<Node>());
         nodeGrid = new Dictionary<Vector2Int, Node>();
 
-        // THÊM DEBUG
-        Debug.Log($"Found {allNodes.Count} nodes in scene");
-
         foreach (Node node in allNodes)
         {
-            // SỬA: Dùng Vector2Int để tránh floating point errors
-            Vector2Int gridPos = new Vector2Int(
-                Mathf.RoundToInt(node.transform.position.x),
-                Mathf.RoundToInt(node.transform.position.y)
-            );
-            
+            Vector2Int gridPos = ToGrid(node.transform.position);
             if (!nodeGrid.ContainsKey(gridPos))
             {
                 nodeGrid.Add(gridPos, node);
-                Debug.Log($"Added node to grid: {gridPos} -> {node.name}");
-            }
-            else
-            {
-                Debug.LogWarning($"Duplicate node position at {gridPos}! Already has {nodeGrid[gridPos].name}");
             }
         }
+        Debug.Log($"Pathfinder: Loaded {nodeGrid.Count} nodes into grid.");
     }
 
-    /// <summary>
-    /// Tìm đường từ vị trí start đến target sử dụng BFS
-    /// </summary>
-    /// <param name="start">Vị trí bắt đầu</param>
-    /// <param name="target">Vị trí mục tiêu</param>
-    /// <returns>Hướng đi đầu tiên cần thực hiện</returns>
     public Vector2 FindDirectionToTarget(Vector2 start, Vector2 target)
     {
-        // SỬA: Làm tròn chính xác hơn
-        Vector2Int startGrid = new Vector2Int(
-            Mathf.RoundToInt(start.x),
-            Mathf.RoundToInt(start.y)
-        );
-        Vector2Int targetGrid = new Vector2Int(
-            Mathf.RoundToInt(target.x),
-            Mathf.RoundToInt(target.y)
-        );
+        Node startNode = GetNodeAtPosition(ToGrid(start)) ?? FindNearestNode(start);
+        Node targetNode = GetNodeAtPosition(ToGrid(target)) ?? FindNearestNode(target);
 
-        Debug.Log($"FindDirectionToTarget: {start} -> {target}");
-        Debug.Log($"Grid positions: {startGrid} -> {targetGrid}");
+        if (startNode == null || targetNode == null) return Vector2.zero;
 
-        // Nếu đã ở cùng vị trí
-        if (startGrid == targetGrid)
+        // Nếu Ghost và Pacman đang ở cùng một Node, hãy di chuyển thẳng tới vị trí thực tế của Pacman
+        if (startNode == targetNode)
         {
-            Debug.Log("Already at target position");
-            return Vector2.zero;
+            // Trả về hướng từ vị trí hiện tại tới vị trí đích (không phải vị trí Node)
+            return (target - start).normalized;
         }
-
-        // Tìm node
-        Node startNode = GetNodeAtPosition(startGrid);
-        Node targetNode = GetNodeAtPosition(targetGrid);
-
-        if (startNode == null)
-        {
-            Debug.LogWarning($"No node found at start position {startGrid}");
-            startNode = FindNearestNode(start);
-        }
-        
-        if (targetNode == null)
-        {
-            Debug.LogWarning($"No node found at target position {targetGrid}");
-            targetNode = FindNearestNode(target);
-        }
-
-        if (startNode == null || targetNode == null)
-        {
-            Debug.LogError($"Cannot find path: startNode={startNode}, targetNode={targetNode}");
-            return Vector2.zero;
-        }
-
-        Debug.Log($"Start node: {startNode.name} at {startNode.transform.position}");
-        Debug.Log($"Target node: {targetNode.name} at {targetNode.transform.position}");
+        // ----------------------------
 
         // BFS
         Queue<Node> queue = new Queue<Node>();
         Dictionary<Node, Node> cameFrom = new Dictionary<Node, Node>();
-        Dictionary<Node, Vector2> firstMove = new Dictionary<Node, Vector2>();
 
         queue.Enqueue(startNode);
         cameFrom[startNode] = null;
-        firstMove[startNode] = Vector2.zero;
 
-        int iteration = 0;
-        int maxIterations = 500;
+        Node reachedTarget = null;
 
-        while (queue.Count > 0 && iteration < maxIterations)
+        while (queue.Count > 0)
         {
-            iteration++;
             Node current = queue.Dequeue();
 
-            // Tìm thấy target
             if (current == targetNode)
             {
-                Vector2 direction = firstMove[current];
-                Debug.Log($"Path found in {iteration} iterations! First move: {direction}");
-                return direction;
+                reachedTarget = current;
+                break;
             }
 
-            // Duyệt neighbors
-            if (current.availableDirections == null)
+            foreach (Vector2 dir in current.availableDirections)
             {
-                Debug.LogError($"Node {current.name} has null availableDirections!");
-                continue;
-            }
+                // SỬ DỤNG HÀM THÔNG MINH ĐỂ TÌM HÀNG XÓM
+                Node neighbor = GetNextNodeInDirection(current, dir);
 
-            foreach (Vector2 direction in current.availableDirections)
-            {
-                // Tính vị trí neighbor
-                Vector2 neighborPos = (Vector2)current.transform.position + direction;
-                Vector2Int neighborGrid = new Vector2Int(
-                    Mathf.RoundToInt(neighborPos.x),
-                    Mathf.RoundToInt(neighborPos.y)
-                );
-
-                if (nodeGrid.TryGetValue(neighborGrid, out Node neighbor))
+                if (neighbor != null && !cameFrom.ContainsKey(neighbor))
                 {
-                    if (!cameFrom.ContainsKey(neighbor))
-                    {
-                        queue.Enqueue(neighbor);
-                        cameFrom[neighbor] = current;
-                        
-                        // Lưu hướng đầu tiên
-                        if (firstMove[current] == Vector2.zero)
-                        {
-                            firstMove[neighbor] = direction;
-                        }
-                        else
-                        {
-                            firstMove[neighbor] = firstMove[current];
-                        }
-                        
-                        Debug.Log($"  Added neighbor: {neighbor.name} at {neighborGrid}, first move: {firstMove[neighbor]}");
-                    }
-                }
-                else
-                {
-                    Debug.LogWarning($"No node at neighbor position {neighborGrid} from {current.name}");
+                    cameFrom[neighbor] = current;
+                    queue.Enqueue(neighbor);
                 }
             }
         }
 
-        Debug.LogWarning($"No path found after {iteration} iterations");
+        if (reachedTarget != null)
+        {
+            UpdateDebugPath(reachedTarget, cameFrom);
+
+            // Tìm hướng đi đầu tiên
+            Node step = reachedTarget;
+            
+            //logic truy ngược vết
+            while (cameFrom[step] != null && cameFrom[step] != startNode)
+            {
+                step = cameFrom[step];
+            }
+            return (step.transform.position - startNode.transform.position).normalized;
+        }
+
+        debugPath.Clear();
         return Vector2.zero;
+    }
+
+    // HÀM THÔNG MINH: Dò tìm Node tiếp theo theo hướng chỉ định
+    private Node GetNextNodeInDirection(Node startNode, Vector2 direction)
+    {
+        // Thử dò từ 1 đơn vị đến maxSearchDistance
+        for (float d = 1; d <= maxSearchDistance; d++)
+        {
+            Vector2 checkPos = (Vector2)startNode.transform.position + (direction * d);
+            Node found = GetNodeAtPosition(ToGrid(checkPos));
+
+            if (found != null) return found;
+        }
+        return null;
+    }
+
+    private Vector2Int ToGrid(Vector2 pos)
+    {
+        return new Vector2Int(
+            Mathf.FloorToInt(pos.x),
+            Mathf.FloorToInt(pos.y)
+        );
     }
 
     private Node GetNodeAtPosition(Vector2Int gridPos)
     {
-        if (nodeGrid.TryGetValue(gridPos, out Node node))
+        return nodeGrid.TryGetValue(gridPos, out Node node) ? node : null;
+    }
+
+    private void UpdateDebugPath(Node endNode, Dictionary<Node, Node> cameFrom)
+    {
+        debugPath.Clear();
+        Node current = endNode;
+        while (current != null)
         {
-            return node;
+            debugPath.Add(current.transform.position);
+            current = cameFrom[current];
         }
-        return null;
+        debugPath.Reverse();
+    }
+
+    private void OnDrawGizmos()
+    {
+        if (debugPath == null || debugPath.Count < 2) return;
+
+        Gizmos.color = Color.cyan;
+        for (int i = 0; i < debugPath.Count - 1; i++)
+        {
+            Gizmos.DrawLine(debugPath[i], debugPath[i + 1]);
+            Gizmos.DrawSphere(debugPath[i], 0.2f);
+        }
     }
 
     private Node FindNearestNode(Vector2 position)
     {
         Node nearest = null;
         float minDistance = float.MaxValue;
-        float searchRadius = 10.0f; // Tăng radius tìm kiếm
-
         foreach (Node node in allNodes)
         {
             float distance = Vector2.Distance(position, node.transform.position);
-            if (distance < minDistance && distance <= searchRadius)
+            if (distance < minDistance)
             {
                 minDistance = distance;
                 nearest = node;
             }
         }
-
-        Debug.Log($"FindNearestNode({position}): found {nearest?.name} at distance {minDistance}");
         return nearest;
-    }
-
-    /// <summary>
-    /// Tìm đường ngẫu nhiên để chạy trốn (cho chế độ frightened)
-    /// </summary>
-    public Vector2 FindRandomDirection(Vector2 start, Node currentNode)
-    {
-        if (currentNode == null || currentNode.availableDirections.Count == 0)
-            return Vector2.zero;
-
-        // Chọn hướng ngẫu nhiên, ưu tiên không quay đầu
-        List<Vector2> validDirections = new List<Vector2>(currentNode.availableDirections);
-        
-        // Loại bỏ hướng quay đầu nếu có nhiều hướng
-        if (validDirections.Count > 1)
-        {
-            Vector2 oppositeDirection = -GhostManager.Instance.GetGhostDirection(this.GetComponent<Ghost>());
-            validDirections.Remove(oppositeDirection);
-        }
-
-        if (validDirections.Count == 0)
-            validDirections = new List<Vector2>(currentNode.availableDirections);
-
-        int randomIndex = Random.Range(0, validDirections.Count);
-        return validDirections[randomIndex];
     }
 }

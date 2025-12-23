@@ -26,10 +26,6 @@ public class Node : MonoBehaviour
         {
             Debug.LogError($"Node {name}: wallTilemap NOT FOUND!");
         }
-    }
-
-    private void Start()
-    {
         if (wallTilemap == null) return;
 
         availableDirections = new List<Vector2>();
@@ -42,18 +38,19 @@ public class Node : MonoBehaviour
         Debug.Log($"Node {name} at {transform.position} has {availableDirections.Count} directions");
     }
 
+    // private void Start()
+    // {
+        
+    // }
+
     private void CheckAvailableDirection(Vector2 direction)
     {
-        Vector3Int currentCell = wallTilemap.WorldToCell(transform.position);
-        Vector3Int targetCell = currentCell + new Vector3Int(
-            Mathf.RoundToInt(direction.x),
-            Mathf.RoundToInt(direction.y),
-            0
-        );
+        Vector3 targetWorldPos = transform.position + (Vector3)direction; 
+        Vector3Int targetCell = wallTilemap.WorldToCell(targetWorldPos);
 
-        if (!wallTilemap.HasTile(targetCell))
-        {
-            availableDirections.Add(direction);
-        }
+    if (!wallTilemap.HasTile(targetCell))
+    {
+        availableDirections.Add(direction);
+    }
     }
 }

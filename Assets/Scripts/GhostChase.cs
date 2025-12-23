@@ -25,6 +25,9 @@ public class GhostChase : GhostBehavior
                 Debug.LogWarning($"{ghost.name}: Target is null! Cannot chase.");
                 return;
             }
+            Vector3 snappedPos = node.transform.position;
+            snappedPos.z = transform.position.z; // Giữ nguyên Z
+            transform.position = snappedPos;
 
             Vector2 direction = GetChaseDirection(node);
 
